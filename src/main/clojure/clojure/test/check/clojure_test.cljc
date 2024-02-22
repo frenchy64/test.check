@@ -15,10 +15,21 @@
             [clojure.test.check.impl :refer [get-current-time-millis]])
   #?(:cljs (:require-macros [clojure.test.check.clojure-test :refer [defspec]])))
 
+(defn with-test-out* [f]
+  #?(:clj  (ct/with-test-out (f))
+     :cljs (f)))
+
 (defn assert-check
-  [{:keys [result result-data] :as m}]
+  [{:keys [result-data] :as m}]
   (if-let [error (:clojure.test.check.properties/error result-data)]
-    (throw error)
+    (let [{:keys [seed num-tests]} m]
+      (with-test-out*
+        (fn []
+          (newline)
+          (println "Error thrown by test after" num-tests
+                   (str "iteration" (when-not (= 1 num-tests) "s"))
+                   "\nSeed:" seed)))
+      (throw error))
     (ct/is (clojure.test.check.clojure-test/check? m))))
 
 (def ^:dynamic *default-test-count* 100)
@@ -131,10 +142,6 @@
   [{property-fun ::property :as report-map}]
   (or (-> property-fun meta :name) (ct/testing-vars-str report-map)))
 
-(defn with-test-out* [f]
-  #?(:clj  (ct/with-test-out (f))
-     :cljs (f)))
-
 (defn trial-report-periodic
   "Intended to be bound as the value of `*report-trials*`; will emit a verbose
   status every `*trial-report-period*` milliseconds, like this one:
@@ -166,7 +173,7 @@
   true)
 
 (when #?(:clj true :cljs (not (and *ns* (re-matches #".*\$macros" (name (ns-name *ns*))))))
-  ;; This check accomodates a number of tools that rebind ct/report
+  ;; This check accommodates a number of tools that rebind ct/report
   ;; to be a regular function instead of a multimethod, and may do
   ;; so before this code is loaded (see TCHECK-125)
   (if-not (instance? #?(:clj clojure.lang.MultiFn :cljs MultiFn) ct/report)
