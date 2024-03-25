@@ -231,7 +231,7 @@
     (is (= 1 (count (re-seq #"this property is terrible" test-out)))
         "Only prints exceptions once")
     ;; TCHECK-159
-    (is (= 1 (count (re-seq #"Error thrown by test after 1 iteration"
+    (is (= 1 (count (re-seq #"Error during iteration 1"
                             test-out))))
     (is (= 1 (count (re-seq #"Seed: 123456"
                             test-out))))))

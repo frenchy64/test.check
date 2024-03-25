@@ -26,8 +26,7 @@
       (with-test-out*
         (fn []
           (newline)
-          (println "Error thrown by test after" num-tests
-                   (str "iteration" (when-not (= 1 num-tests) "s"))
+          (println "Error during iteration" num-tests
                    "\nSeed:" seed)))
       (throw error))
     (ct/is (clojure.test.check.clojure-test/check? m))))
