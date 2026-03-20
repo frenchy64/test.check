@@ -79,6 +79,7 @@
         inner-children (children outer-root)
         res (make-rose inner-root (concat (map join outer-children)
                                           inner-children))]
+    #_
     (binding [*print-level* nil *print-length* nil]
       (let [res (with-out-str
                   (pp/pprint (list 'is (list '=-rose-tree
