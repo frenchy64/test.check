@@ -76,3 +76,16 @@
       #_(prn assertion)
       (eval assertion)
       )))
+
+(deftest pure-test
+  (is (=-rose-tree (rose/make-rose 42 [])
+                   (rose/pure 42))))
+
+(deftest fmap-test
+  (is (=-rose-tree (rose/make-rose 42 [(rose/make-rose 43 [])])
+                   (rose/fmap inc (rose/make-rose 41 [(rose/make-rose 42 [])])))))
+
+(deftest bind-test
+  (is (=-rose-tree (rose/make-rose 43 ())
+                   (rose/bind (rose/make-rose (rose/make-rose 42 []) ())
+                              #(rose/make-rose (inc (rose/root %)) (rose/children %))))))
