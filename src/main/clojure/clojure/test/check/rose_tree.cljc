@@ -10,7 +10,9 @@
 (ns clojure.test.check.rose-tree
   "A lazy tree data structure used for shrinking."
   (:refer-clojure :exclude [filter remove seq])
-  (:require [#?(:clj clojure.core :cljs cljs.core) :as core]))
+  (:require [#?(:clj clojure.core :cljs cljs.core) :as core]
+            [clojure.pprint :as pp]
+            [clojure.walk :as walk]))
 
 (deftype RoseTree [root children]
   #?(:clj  clojure.lang.Indexed
@@ -52,6 +54,20 @@
        (cons (first s)
              (exclude-nth (dec n) (rest s)))))))
 
+(defn- RoseTree->ctor-syntax [rose]
+  (if (instance? RoseTree rose)
+    (list 'rose/make-rose
+          (RoseTree->ctor-syntax (root rose))
+          (mapv RoseTree->ctor-syntax (children rose)))
+    (walk/postwalk
+      (fn [x]
+        (if (fn? x)
+          (str x)
+          x))
+      rose)))
+
+(def ^:private -seen-prints (atom #{}))
+
 (defn join
   "Turn a tree of trees into a single tree. Does this by concatenating
   children of the inner and outer trees."
@@ -60,9 +76,18 @@
   (let [outer-root (root rose)
         outer-children (children rose)
         inner-root (root outer-root)
-        inner-children (children outer-root)]
-    (make-rose inner-root (concat (map join outer-children)
-                                  inner-children))))
+        inner-children (children outer-root)
+        res (make-rose inner-root (concat (map join outer-children)
+                                          inner-children))]
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/join (RoseTree->ctor-syntax rose))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "joins.txt" res :append true))))
+    res
+    ))
 
 (defn pure
   "Puts a value `x` into a Rose tree, with no children."

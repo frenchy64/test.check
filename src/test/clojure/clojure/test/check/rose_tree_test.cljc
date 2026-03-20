@@ -8,7 +8,9 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns clojure.test.check.rose-tree-test
-  (:require [clojure.test.check.generators :as gen]
+  (:require [clojure.test :refer [deftest is]]
+            [clojure.walk :as walk]
+            [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
             [clojure.test.check.clojure-test :as ct :refer [defspec]]))
@@ -31,3 +33,46 @@
     (let [tree (#'gen/int-rose-tree i)]
       (= (depth-one-and-two-children tree)
          (depth-one-children (rose/collapse tree))))))
+
+(defrecord RoseTreeComparable [root children])
+
+(defn make-rose-comparable [root children]
+  (RoseTreeComparable. root children))
+
+(defn RoseTree->RoseTreeComparable [rose]
+  (if (instance? clojure.test.check.rose_tree.RoseTree rose)
+    (->RoseTreeComparable (RoseTree->RoseTreeComparable (rose/root rose))
+                          (mapv RoseTree->RoseTreeComparable (rose/children rose)))
+    (walk/postwalk (fn [x]
+                     (cond-> x
+                       (instance? clojure.test.check.rose_tree.RoseTree rose) RoseTree->RoseTreeComparable))
+                   rose)))
+
+(defn =-rose-tree [r1 r2]
+  (= (RoseTree->RoseTreeComparable r1)
+     (RoseTree->RoseTreeComparable r2)))
+
+(deftest join-test
+  (is (=-rose-tree (rose/make-rose 42 ())
+                   (rose/join
+                     (rose/make-rose (rose/make-rose 42 []) ()))))
+  (is (not (=-rose-tree (rose/make-rose 43 ())
+                        (rose/join
+                          (rose/make-rose (rose/make-rose 42 []) ()))))))
+
+(defn test-size [x]
+  (let [v (volatile! 0)]
+    (walk/postwalk (fn [x]
+                     (vswap! v inc)
+                     x)
+                   x)
+    @v))
+
+(def this-ns (ns-name *ns*))
+(deftest join-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "joins.txt") "]"))
+            :when (< (test-size assertion) 5000)]
+      #_(prn assertion)
+      (eval assertion)
+      )))
