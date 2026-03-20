@@ -116,8 +116,9 @@
   {:no-doc true}
   [pred rose]
   (make-rose (root rose)
-             (map #(filter pred %)
-                  (core/filter #(pred (root %)) (children rose)))))
+             (keep #(when (pred (root %))
+                      (filter pred %))
+                   (children rose))))
 
 (defn permutations
   "Create a seq of vectors, where each rose in turn, has been replaced
