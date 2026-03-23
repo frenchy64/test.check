@@ -214,3 +214,28 @@
       #_(prn assertion)
       (eval assertion)
       )))
+
+(deftest shrink-vector-test
+  (is
+    (=-rose-tree
+      (rose/shrink-vector clojure.core/vector [])
+      (rose/make-rose [] [])))
+  (is
+    (=-rose-tree
+      (rose/shrink-vector
+        clojure.core/vector
+        [(rose/make-rose 1 [(rose/make-rose 0 [])])])
+      (rose/make-rose
+        [1]
+        [(rose/make-rose [] [])
+         (rose/make-rose [] [])
+         (rose/make-rose [0] [(rose/make-rose [] [])])])))
+  )
+
+(deftest rose-shrink-vector-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "rose-shrink-vector.txt") "]"))
+            :when (< (test-size assertion) 1000)]
+      #_(prn assertion)
+      (eval assertion)
+      )))

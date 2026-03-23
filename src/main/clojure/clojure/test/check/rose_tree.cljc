@@ -12,7 +12,8 @@
   (:refer-clojure :exclude [filter remove seq])
   (:require [#?(:clj clojure.core :cljs cljs.core) :as core]
             [clojure.pprint :as pp]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [clojure.string :as str]))
 
 (deftype RoseTree [root children]
   #?(:clj  clojure.lang.Indexed
@@ -204,11 +205,27 @@
   [f roses]
   {:pre [(vector? roses)]}
   (let [rose (shrink-vector* f roses)
-        empty-rose (make-rose (f) [])]
-    (if (empty? roses)
-      rose
-      (make-rose (root rose)
-                 (cons empty-rose (children rose))))))
+        empty-rose (make-rose (f) [])
+        res (if (empty? roses)
+              rose
+              (make-rose (root rose)
+                         (cons empty-rose (children rose))))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/shrink-vector
+                                                   (if (str/includes? (str f) "clojure.core$vector")
+                                                     `vector
+                                                     (if (str/includes? (str f) "clojure.core$list")
+                                                       `list
+                                                       (throw (ex-info (str "unknown: " f)))))
+                                                   (mapv RoseTree->ctor-syntax roses))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-shrink-vector.txt" res :append true))))
+    res
+    ))
 
 (defn collapse
   "Return a new rose-tree whose depth-one children
