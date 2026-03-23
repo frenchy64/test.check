@@ -178,7 +178,7 @@
 (defn- make-stack
   [children stack]
   (if-let [s (core/seq children)]
-    (cons children stack)
+    (cons s stack)
     stack))
 
 (defn seq
@@ -195,14 +195,16 @@
                    (lazy-seq
                     (if-not (seen node)
                       (cons node
-                            (if (core/seq the-children)
+                            (if-let [the-children (core/seq the-children)]
                               (helper (first the-children) (conj seen node) (make-stack (rest the-children) stack))
                               (when-let [s (core/seq stack)]
-                                (let [f (ffirst s)
-                                      r (rest (first s))]
+                                (let [sf (first s)
+                                      f (first sf)
+                                      r (rest sf)]
                                   (helper f (conj seen node) (make-stack r (rest s)))))))
                       (when-let [s (core/seq stack)]
-                        (let [f (ffirst s)
-                              r (rest (first s))]
+                        (let [sf (first s)
+                              f (first sf)
+                              r (rest sf)]
                           (helper f seen (make-stack r (rest s)))))))))]
     (helper rose #{} '())))
