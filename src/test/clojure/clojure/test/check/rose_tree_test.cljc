@@ -45,7 +45,7 @@
                           (mapv RoseTree->RoseTreeComparable (rose/children rose)))
     (walk/postwalk (fn [x]
                      (cond-> x
-                       (instance? clojure.test.check.rose_tree.RoseTree rose) RoseTree->RoseTreeComparable))
+                       (instance? clojure.test.check.rose_tree.RoseTree x) RoseTree->RoseTreeComparable))
                    rose)))
 
 (defn =-rose-tree [r1 r2]
@@ -72,6 +72,31 @@
 (deftest join-examples-from-test-suite-test
   (binding [*ns* (the-ns this-ns)]
     (doseq [assertion (read-string (str "[" (slurp "joins.txt") "]"))
+            :when (< (test-size assertion) 5000)]
+      #_(prn assertion)
+      (eval assertion)
+      )))
+
+(deftest permutations-test
+  (is (=-rose-tree (rose/permutations [(rose/make-rose 0 [])]) []))
+  (is
+    (=-rose-tree
+      (rose/permutations [(rose/make-rose 1 [(rose/make-rose 0 [])])])
+      [[(rose/make-rose 0 [])]]))
+
+  (is
+    (=-rose-tree
+      (rose/permutations
+        [(rose/make-rose
+           2
+           [(rose/make-rose 0 [])
+            (rose/make-rose 1 [(rose/make-rose 0 [])])])])
+      [[(rose/make-rose 0 [])]
+       [(rose/make-rose 1 [(rose/make-rose 0 [])])]])))
+
+(deftest permutations-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "permutations.txt") "]"))
             :when (< (test-size assertion) 5000)]
       #_(prn assertion)
       (eval assertion)

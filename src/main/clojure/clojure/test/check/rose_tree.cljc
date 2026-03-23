@@ -125,9 +125,19 @@
   by its children."
   {:no-doc true}
   [roses]
-  (for [[rose index] (map vector roses (range))
-        child (children rose)]
-    (assoc roses index child)))
+  (let [res (for [[rose index] (map vector roses (range))
+                  child (children rose)]
+              (assoc roses index child))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/permutations (mapv RoseTree->ctor-syntax roses))
+                                             (mapv #(mapv RoseTree->ctor-syntax %) res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "permutations.txt" res :append true))))
+    res
+    ))
 
 (defn zip
   "Apply `f` to the sequence of Rose trees `roses`."
