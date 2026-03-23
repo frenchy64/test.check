@@ -318,6 +318,44 @@
          (RoseTree->data (gen/call-gen gen/nat
                                        (random/make-random 1)
                                        3))))
+  (is (= [7
+          :=> [0 :.]
+          :=> [4
+               :=> [0 :.]
+               :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]
+               :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]]
+          :=> [6
+               :=> [0 :.]
+               :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]
+               :=> [5
+                    :=> [0 :.]
+                    :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]
+                    :=> [4
+                         :=> [0 :.]
+                         :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]
+                         :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]]]]]
+         (RoseTree->data (gen/call-gen gen/nat
+                                       (random/make-random 0)
+                                       8))))
+  (is (= [7
+          :=> [0 :.]
+          :=> [4
+               :=> [0 :.]
+               :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]
+               :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]]
+          :=> [6
+               :=> [0 :.]
+               :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]
+               :=> [5
+                    :=> [0 :.]
+                    :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]
+                    :=> [4
+                         :=> [0 :.]
+                         :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]
+                         :=> [3 :=> [0 :.] :=> [2 :=> [0 :.] :=> [1 :=> [0 :.]]]]]]]]
+         (RoseTree->data (gen/call-gen gen/nat
+                                       (random/make-random 4)
+                                       8))))
   (testing "example where bind and fmap shrink similarly"
     (is (= [[0 1 2 3 4 5]
             :.> []
@@ -546,4 +584,140 @@
           :=> [[] :.]]
          (RoseTree->data (gen/call-gen (gen/recursive-gen gen/vector gen/boolean)
                                        (random/make-random 1)
-                                       7)))))
+                                       7))))
+  (is (= [[]
+          :=>
+          [true :=> [false :.]]
+          :=>
+          [[]
+           :=>
+           [true :=> [false :.]]
+           :=>
+           [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]
+           :=>
+           [[]
+            :=>
+            [true :=> [false :.]]
+            :=>
+            [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]]
+          :=>
+          [[]
+           :=>
+           [true :=> [false :.]]
+           :=>
+           [[]
+            :=>
+            [true :=> [false :.]]
+            :=>
+            [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]
+           :=>
+           [[]
+            :=>
+            [true :=> [false :.]]
+            :=>
+            [[]
+             :=>
+             [true :=> [false :.]]
+             :=>
+             [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]
+            :=>
+            [[]
+             :=>
+             [true :=> [false :.]]
+             :=>
+             [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]
+             :=>
+             [[]
+              :=>
+              [true :=> [false :.]]
+              :=>
+              [[]
+               :=>
+               [true :=> [false :.]]
+               :=>
+               [[] :=> [true :=> [false :.]]]]]]]]
+          :=>
+          [[]
+           :=>
+           [true :=> [false :.]]
+           :=>
+           [[]
+            :=>
+            [true :=> [false :.]]
+            :=>
+            [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]
+            :=>
+            [[]
+             :=>
+             [true :=> [false :.]]
+             :=>
+             [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]]
+           :=>
+           [[]
+            :=>
+            [true :=> [false :.]]
+            :=>
+            [[]
+             :=>
+             [true :=> [false :.]]
+             :=>
+             [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]
+            :=>
+            [[]
+             :=>
+             [true :=> [false :.]]
+             :=>
+             [[]
+              :=>
+              [true :=> [false :.]]
+              :=>
+              [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]]
+             :=>
+             [[]
+              :=>
+              [true :=> [false :.]]
+              :=>
+              [[] :=> [true :=> [false :.]] :=> [[] :=> [true :=> [false :.]]]]
+              :=>
+              [[]
+               :=>
+               [true :=> [false :.]]
+               :=>
+               [[]
+                :=>
+                [true :=> [false :.]]
+                :=>
+                [[] :=> [true :=> [false :.]]]]]]]]]]
+         (RoseTree->data (-> (gen/call-gen (gen/recursive-gen gen/vector gen/boolean)
+                                           (random/make-random 12)
+                                           14)
+                             rose/children
+                             first))))
+  #_
+  (is (= 
+        (RoseTree->data (gen/call-gen (gen/recursive-gen gen/vector gen/large-integer)
+                                (random/make-random 1)
+                                11))))
+)
+
+(deftest bounded-vector-shrink-test
+  (is (= [[0 0 0]
+          :=> [[0 0] :.]
+          :=> [[0 0] :.]
+          :=> [[0 0] :.]]
+         (RoseTree->data (gen/call-gen (gen/vector gen/large-integer 2 3)
+                                       (random/make-random 1)
+                                       0))))
+  (is (= [[0 0 0]
+          :=>
+          [[] :.]
+          :=>
+          [[0 0] :=> [[0] :=> [[] :.]] :=> [[0] :=> [[] :.]]]
+          :=>
+          [[0 0] :=> [[0] :=> [[] :.]] :=> [[0] :=> [[] :.]]]
+          :=>
+          [[0 0] :=> [[0] :=> [[] :.]] :=> [[0] :=> [[] :.]]]]
+         (RoseTree->data (gen/call-gen (gen/vector gen/large-integer)
+                                       (random/make-random 1)
+                                       3))))
+  )
