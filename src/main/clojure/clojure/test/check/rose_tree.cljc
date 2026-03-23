@@ -48,7 +48,7 @@
   (lazy-seq
    (when-let [s (core/seq coll)]
      (if (zero? n)
-       (rest coll)
+       (rest s)
        (cons (first s)
              (exclude-nth (dec n) (rest s)))))))
 
