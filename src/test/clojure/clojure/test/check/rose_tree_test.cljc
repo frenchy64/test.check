@@ -184,3 +184,33 @@
       #_(prn assertion)
       (eval assertion)
       )))
+
+(deftest rose-remove-test
+  (is
+    (=-rose-tree
+      (rose/remove [(rose/make-rose 1 [(rose/make-rose 0 [])])])
+      [[] [(rose/make-rose 0 [])]]))
+  (is
+    (=-rose-tree
+      (rose/remove
+        [(rose/make-rose
+           -3
+           [(rose/make-rose 0 [])
+            (rose/make-rose
+              -2
+              [(rose/make-rose 0 [])
+               (rose/make-rose -1 [(rose/make-rose 0 [])])])])])
+      [[]
+       [(rose/make-rose 0 [])]
+       [(rose/make-rose
+          -2
+          [(rose/make-rose 0 [])
+           (rose/make-rose -1 [(rose/make-rose 0 [])])])]])))
+
+(deftest rose-remove-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "rose-remove.txt") "]"))
+            :when (< (test-size assertion) 1000)]
+      #_(prn assertion)
+      (eval assertion)
+      )))

@@ -151,9 +151,19 @@
 (defn remove
   {:no-doc true}
   [roses]
-  (concat
-   (map-indexed (fn [index _] (exclude-nth index roses)) roses)
-   (permutations (vec roses))))
+  (let [res (concat
+              (map-indexed (fn [index _] (exclude-nth index roses)) roses)
+              (permutations (vec roses)))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/remove (mapv RoseTree->ctor-syntax roses))
+                                             (mapv #(mapv RoseTree->ctor-syntax %) res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-remove.txt" res :append true))))
+    res
+    ))
 
 (defn ^:private unchunk
   "Returns an equivalent lazy seq that is not chunked."
