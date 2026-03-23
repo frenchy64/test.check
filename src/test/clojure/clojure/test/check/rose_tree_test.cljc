@@ -10,6 +10,7 @@
 (ns clojure.test.check.rose-tree-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.walk :as walk]
+            [clojure.test.check.random :as random]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.test.check.rose-tree :as rose]
@@ -239,3 +240,56 @@
       #_(prn assertion)
       (eval assertion)
       )))
+
+(deftest bind-rose-tree-test
+  (is (= [2 0 1]
+         (rose/seq (gen/call-gen gen/nat
+                                 (random/make-random 1)
+                                 3))))
+  (is (= [[1 3 3]
+          []
+          [1 2]
+          [3]
+          [0]
+          [2]
+          [1]
+          [0 2]
+          [0 0]
+          [0 1]
+          [1 0]
+          [1 1]
+          [0 3 3]
+          [0 0 3]
+          [0 0 0]
+          [0 0 2]
+          [0 0 1]
+          [0 2 3]
+          [0 1 3]
+          [0 1 0]
+          [0 1 2]
+          [0 1 1]
+          [0 2 0]
+          [0 2 2]
+          [0 2 1]
+          [0 3 0]
+          [0 3 2]
+          [0 3 1]
+          [1 0 3]
+          [1 0 0]
+          [1 0 2]
+          [1 0 1]
+          [1 2 3]
+          [1 1 3]
+          [1 1 0]
+          [1 1 2]
+          [1 1 1]
+          [1 2 0]
+          [1 2 2]
+          [1 2 1]
+          [1 3 0]
+          [1 3 2]
+          [1 3 1]]
+        (rose/seq (gen/call-gen (gen/bind gen/nat (fn [num-elements] (gen/vector gen/nat num-elements)))
+                          (random/make-random 1)
+                          3))))
+  )
