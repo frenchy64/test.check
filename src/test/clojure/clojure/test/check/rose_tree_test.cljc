@@ -102,6 +102,53 @@
       (eval assertion)
       )))
 
+(deftest collapse-test
+  (is
+    (=-rose-tree
+      (rose/collapse (rose/make-rose 0 []))
+      (rose/make-rose 0 [])))
+  (is
+    (=-rose-tree
+      (rose/collapse
+        (rose/make-rose
+          2
+          [(rose/make-rose 0 [])
+           (rose/make-rose 1 [(rose/make-rose 0 [])])]))
+      (rose/make-rose
+        2
+        [(rose/make-rose 0 [])
+         (rose/make-rose 1 [(rose/make-rose 0 [])])
+         (rose/make-rose 0 [])])))
+  (is
+    (=-rose-tree
+      (rose/collapse
+        (rose/make-rose
+          3
+          [(rose/make-rose 0 [])
+           (rose/make-rose
+             2
+             [(rose/make-rose 0 [])
+              (rose/make-rose 1 [(rose/make-rose 0 [])])])]))
+      (rose/make-rose
+        3
+        [(rose/make-rose 0 [])
+         (rose/make-rose
+           2
+           [(rose/make-rose 0 [])
+            (rose/make-rose 1 [(rose/make-rose 0 [])])
+            (rose/make-rose 0 [])])
+         (rose/make-rose 0 [])
+         (rose/make-rose 1 [(rose/make-rose 0 [])])])))
+  )
+
+(deftest collapse-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "collapse.txt") "]"))
+            :when (< (test-size assertion) 5000)]
+      #_(prn assertion)
+      (eval assertion)
+      )))
+
 (deftest pure-test
   (is (=-rose-tree (rose/make-rose 42 [])
                    (rose/pure 42))))

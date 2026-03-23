@@ -206,11 +206,21 @@
   tree."
   {:no-doc true}
   [rose]
-  (make-rose (root rose)
-             (let [the-children (children rose)]
-               (concat (map collapse the-children)
-                       (map collapse
-                            (mapcat children the-children))))))
+  (let [res (make-rose (root rose)
+                       (let [the-children (children rose)]
+                         (concat (map collapse the-children)
+                                 (map collapse
+                                      (mapcat children the-children)))))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/collapse (RoseTree->ctor-syntax rose))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "collapse.txt" res :append true))))
+    res
+    ))
 
 (defn- make-stack
   [children stack]
