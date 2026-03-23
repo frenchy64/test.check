@@ -251,5 +251,15 @@
                       (when-let [s (core/seq stack)]
                         (let [f (ffirst s)
                               r (rest (first s))]
-                          (helper f seen (make-stack r (rest s)))))))))]
-    (helper rose #{} '())))
+                          (helper f seen (make-stack r (rest s)))))))))
+        res (helper rose #{} '())]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/seq (RoseTree->ctor-syntax rose))
+                                             (vec res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-seq.txt" res :append true))))
+    res
+    ))

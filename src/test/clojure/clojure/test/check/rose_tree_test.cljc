@@ -161,3 +161,26 @@
   (is (=-rose-tree (rose/make-rose 43 ())
                    (rose/bind (rose/make-rose (rose/make-rose 42 []) ())
                               #(rose/make-rose (inc (rose/root %)) (rose/children %))))))
+
+(deftest seq-test
+  (is (=-rose-tree (rose/seq (rose/make-rose 1 [])) [1]))
+  (is
+    (=-rose-tree
+      (rose/seq (rose/make-rose 2 [(rose/make-rose 1 [])]))
+      [2 1]))
+  (is
+    (=-rose-tree
+      (rose/seq
+        (rose/make-rose
+          -2
+          [(rose/make-rose 0 [])
+           (rose/make-rose -1 [(rose/make-rose 0 [])])]))
+      [-2 0 -1])))
+
+(deftest rose-seq-examples-from-test-suite-test
+  (binding [*ns* (the-ns this-ns)]
+    (doseq [assertion (read-string (str "[" (slurp "rose-seq.txt") "]"))
+            :when (< (test-size assertion) 100)]
+      #_(prn assertion)
+      (eval assertion)
+      )))
