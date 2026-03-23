@@ -141,6 +141,23 @@
   (assert (generator? generator) "First arg to bind must be a generator")
   (gen-bind generator (bind-helper f)))
 
+(defn bind-shrinking
+  [generator f]
+  (assert (generator? generator) "First arg to bind must be a generator")
+  (core/let [{h :gen} generator
+             k (fn [rose]
+                 (gen-fmap rose/join
+                           (make-gen
+                             (fn [rnd size]
+                               (rose/fmap #(call-gen (f %) rnd size)
+                                          rose)))))]
+    (make-gen
+      (fn [rnd size]
+        (core/let [[r1 r2] (random/split rnd)
+                   inner (h r1 size)
+                   {result :gen} (k inner)]
+          (result r2 size))))))
+
 ;; Helpers
 ;; ---------------------------------------------------------------------------
 

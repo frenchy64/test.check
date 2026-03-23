@@ -10,7 +10,10 @@
 (ns clojure.test.check.rose-tree
   "A lazy tree data structure used for shrinking."
   (:refer-clojure :exclude [filter remove seq])
-  (:require [#?(:clj clojure.core :cljs cljs.core) :as core]))
+  (:require [#?(:clj clojure.core :cljs cljs.core) :as core]
+            [clojure.pprint :as pp]
+            [clojure.walk :as walk]
+            [clojure.string :as str]))
 
 (deftype RoseTree [root children]
   #?(:clj  clojure.lang.Indexed
@@ -52,6 +55,20 @@
        (cons (first s)
              (exclude-nth (dec n) (rest s)))))))
 
+(defn- RoseTree->ctor-syntax [rose]
+  (if (instance? RoseTree rose)
+    (list 'rose/make-rose
+          (RoseTree->ctor-syntax (root rose))
+          (mapv RoseTree->ctor-syntax (children rose)))
+    (walk/postwalk
+      (fn [x]
+        (if (fn? x)
+          (str x)
+          x))
+      rose)))
+
+(def ^:private -seen-prints (atom #{}))
+
 (defn join
   "Turn a tree of trees into a single tree. Does this by concatenating
   children of the inner and outer trees."
@@ -60,9 +77,19 @@
   (let [outer-root (root rose)
         outer-children (children rose)
         inner-root (root outer-root)
-        inner-children (children outer-root)]
-    (make-rose inner-root (concat (map join outer-children)
-                                  inner-children))))
+        inner-children (children outer-root)
+        res (make-rose inner-root (concat (map join outer-children)
+                                          inner-children))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/join (RoseTree->ctor-syntax rose))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "joins.txt" res :append true))))
+    res
+    ))
 
 (defn pure
   "Puts a value `x` into a Rose tree, with no children."
@@ -90,17 +117,28 @@
   {:no-doc true}
   [pred rose]
   (make-rose (root rose)
-             (map #(filter pred %)
-                  (core/filter #(pred (root %)) (children rose)))))
+             (keep #(when (pred (root %))
+                      (filter pred %))
+                   (children rose))))
 
 (defn permutations
   "Create a seq of vectors, where each rose in turn, has been replaced
   by its children."
   {:no-doc true}
   [roses]
-  (for [[rose index] (map vector roses (range))
-        child (children rose)]
-    (assoc roses index child)))
+  (let [res (for [[rose index] (map vector roses (range))
+                  child (children rose)]
+              (assoc roses index child))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/permutations (mapv RoseTree->ctor-syntax roses))
+                                             (mapv #(mapv RoseTree->ctor-syntax %) res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "permutations.txt" res :append true))))
+    res
+    ))
 
 (defn zip
   "Apply `f` to the sequence of Rose trees `roses`."
@@ -114,9 +152,19 @@
 (defn remove
   {:no-doc true}
   [roses]
-  (concat
-   (map-indexed (fn [index _] (exclude-nth index roses)) roses)
-   (permutations (vec roses))))
+  (let [res (concat
+              (map-indexed (fn [index _] (exclude-nth index roses)) roses)
+              (permutations (vec roses)))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/remove (mapv RoseTree->ctor-syntax roses))
+                                             (mapv #(mapv RoseTree->ctor-syntax %) res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-remove.txt" res :append true))))
+    res
+    ))
 
 (defn ^:private unchunk
   "Returns an equivalent lazy seq that is not chunked."
@@ -157,11 +205,27 @@
   [f roses]
   {:pre [(vector? roses)]}
   (let [rose (shrink-vector* f roses)
-        empty-rose (make-rose (f) [])]
-    (if (empty? roses)
-      rose
-      (make-rose (root rose)
-                 (cons empty-rose (children rose))))))
+        empty-rose (make-rose (f) [])
+        res (if (empty? roses)
+              rose
+              (make-rose (root rose)
+                         (cons empty-rose (children rose))))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/shrink-vector
+                                                   (if (str/includes? (str f) "clojure.core$vector")
+                                                     `vector
+                                                     (if (str/includes? (str f) "clojure.core$list")
+                                                       `list
+                                                       (throw (ex-info (str "unknown: " f)))))
+                                                   (mapv RoseTree->ctor-syntax roses))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-shrink-vector.txt" res :append true))))
+    res
+    ))
 
 (defn collapse
   "Return a new rose-tree whose depth-one children
@@ -169,11 +233,21 @@
   tree."
   {:no-doc true}
   [rose]
-  (make-rose (root rose)
-             (let [the-children (children rose)]
-               (concat (map collapse the-children)
-                       (map collapse
-                            (mapcat children the-children))))))
+  (let [res (make-rose (root rose)
+                       (let [the-children (children rose)]
+                         (concat (map collapse the-children)
+                                 (map collapse
+                                      (mapcat children the-children)))))]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/collapse (RoseTree->ctor-syntax rose))
+                                             (RoseTree->ctor-syntax res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "collapse.txt" res :append true))))
+    res
+    ))
 
 (defn- make-stack
   [children stack]
@@ -204,5 +278,15 @@
                       (when-let [s (core/seq stack)]
                         (let [f (ffirst s)
                               r (rest (first s))]
-                          (helper f seen (make-stack r (rest s)))))))))]
-    (helper rose #{} '())))
+                          (helper f seen (make-stack r (rest s)))))))))
+        res (helper rose #{} '())]
+    #_
+    (binding [*print-level* nil *print-length* nil]
+      (let [res (with-out-str
+                  (pp/pprint (list 'is (list '=-rose-tree
+                                             (list 'rose/seq (RoseTree->ctor-syntax rose))
+                                             (vec res)))))]
+        (when-not (get (first (swap-vals! -seen-prints conj res)) res)
+          (spit "rose-seq.txt" res :append true))))
+    res
+    ))
