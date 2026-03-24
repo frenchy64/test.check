@@ -163,6 +163,47 @@
       (make-rose (root rose)
                  (cons empty-rose (children rose))))))
 
+(defn ^:private shrink-shift
+  [f roses min-elements]
+  (assert (<= min-elements (count roses)))
+  (make-rose (apply f (map root roses))
+             (if (< min-elements (count roses))
+               (map #(shrink-shift f % min-elements)
+                     (remove (unchunk roses)))
+               [])))
+
+(declare shrink-vector-shift*)
+
+(defn ^:private bifurcate-shift
+  "Returns a sequence of rose trees representing shrinks that discard
+  half of the vector of roses."
+  [f roses min-elements]
+  (when (< min-elements (count roses))
+    (let [left-count (max min-elements (quot (count roses) 2))
+          right-count (max min-elements (- (count roses) left-count))
+          right-start (- (count roses) right-count)]
+      ;(prn {:count (count roses) :left-count left-count :right-count right-count :right-start right-start})
+      (lazy-seq
+       (cons
+        (shrink-vector-shift* f (subvec roses 0 left-count) min-elements)
+        (lazy-seq
+         (list (shrink-vector-shift* f (subvec roses right-start) min-elements))))))))
+
+(defn ^:private shrink-vector-shift*
+  [f roses min-elements]
+  (assert (<= min-elements (count roses))
+          (pr-str [(count roses) min-elements]))
+  (let [thing (shrink-shift f roses min-elements)]
+    (assert (<= min-elements (-> thing root count)))
+    (make-rose (root thing)
+               (concat (bifurcate-shift f roses min-elements) (children thing)))))
+
+(defn shrink-vector-shift
+  [f roses min-elements]
+  {:pre [(vector? roses)
+         (<= min-elements (count roses))]}
+  (shrink-vector-shift* f roses min-elements))
+
 (defn collapse
   "Return a new rose-tree whose depth-one children
   are the children from depth one _and_ two of the input
