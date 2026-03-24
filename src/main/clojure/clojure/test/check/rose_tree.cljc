@@ -138,30 +138,33 @@
 (defn ^:private bifurcate
   "Returns a sequence of rose trees representing shrinks that discard
   half of the vector of roses."
-  [f roses]
-  (when (<= 4 (count roses))
-    (let [left-count (quot (count roses) 2)]
-      (lazy-seq
-       (cons
-        (shrink-vector* f (subvec roses 0 left-count))
-        (lazy-seq
-         (list (shrink-vector* f (subvec roses left-count)))))))))
+  ([f roses] (bifurcate f roses 0))
+  ([f roses left-start]
+   (when (<= 4 (count roses))
+     (let [left-count (quot (- (count roses) left-start) 2)
+           left-end (+ left-start left-count)]
+       (lazy-seq
+         (cons
+           (shrink-vector* f (subvec roses left-start left-end) left-start)
+           (lazy-seq
+             (list (shrink-vector* f (subvec roses left-end) left-start)))))))))
 
 (defn ^:private shrink-vector*
-  [f roses]
+  [f roses min-elements]
   (let [thing (shrink f roses)]
     (make-rose (root thing)
-               (concat (bifurcate f roses) (children thing)))))
+               (concat (bifurcate f roses (or min-elements 0)) (children thing)))))
 
 (defn shrink-vector
-  [f roses]
-  {:pre [(vector? roses)]}
-  (let [rose (shrink-vector* f roses)
-        empty-rose (make-rose (f) [])]
-    (if (empty? roses)
-      rose
-      (make-rose (root rose)
-                 (cons empty-rose (children rose))))))
+  ([f roses] (shrink-vector f roses 0))
+  ([f roses min-elements]
+   {:pre [(vector? roses)]}
+   (let [rose (shrink-vector* f roses min-elements)]
+     (if (empty? roses)
+       rose
+       (let [empty-rose (make-rose (f) [])]
+         (make-rose (root rose)
+                    (cons empty-rose (children rose))))))))
 
 (defn collapse
   "Return a new rose-tree whose depth-one children

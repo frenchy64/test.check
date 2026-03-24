@@ -635,11 +635,9 @@
     (choose min-elements max-elements)
     (fn [num-elements-rose]
       (gen-fmap (fn [roses]
-                  (rose/filter
-                   (fn [v] (and (>= (count v) min-elements)
-                                (<= (count v) max-elements)))
-                   (rose/shrink-vector core/vector
-                                       roses)))
+                  (rose/shrink-vector core/vector
+                                      roses
+                                      min-elements))
                 (gen-tuple (repeat (rose/root num-elements-rose)
                                    generator)))))))
 
