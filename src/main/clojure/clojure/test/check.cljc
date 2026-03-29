@@ -39,6 +39,19 @@
      :time-elapsed-ms time-elapsed-ms
      :seed seed}))
 
+(defn- exception-thrown
+  [property e trial-number size seed start-time reporter-fn]
+  (let [failed-after-ms (- (get-current-time-millis) start-time)
+        failure-data {:type :failure
+                      :failed-after-ms failed-after-ms
+                      :num-tests trial-number
+                      :pass? false
+                      :property property
+                      :result e
+                      :result-data {:clojure.test.check.properties/error e}
+                      :seed seed}]
+    (reporter-fn failure-data)
+    (dissoc failure-data :property)))
 
 (defn ^:private legacy-result
   "Returns a value for the legacy :result key, which has the peculiar
@@ -62,171 +75,176 @@
   Takes several optional keys:
 
   `:seed`
-    Can be used to re-run previous tests, as the seed used is returned
-    after a test is run.
+  Can be used to re-run previous tests, as the seed used is returned
+  after a test is run.
 
   `:max-size`.
-    can be used to control the 'size' of generated values. The size will
-    start at 0, and grow up to max-size, as the number of tests increases.
-    Generators will use the size parameter to bound their growth. This
-    prevents, for example, generating a five-thousand element vector on
-    the very first test.
+  can be used to control the 'size' of generated values. The size will
+  start at 0, and grow up to max-size, as the number of tests increases.
+  Generators will use the size parameter to bound their growth. This
+  prevents, for example, generating a five-thousand element vector on
+  the very first test.
 
   `:reporter-fn`
-    A callback function that will be called at various points in the test
-    run, with a map like:
+  A callback function that will be called at various points in the test
+  run, with a map like:
 
-      ;; called after a passing trial
-      {:type            :trial
-       :args            [...]
-       :num-tests       <number of tests run so far>
-       :num-tests-total <total number of tests to be run>
-       :seed            42
-       :pass?           true
-       :property        #<...>
-       :result          true
-       :result-data     {...}}
+  ;; called after a passing trial
+  {:type            :trial
+  :args            [...]
+  :num-tests       <number of tests run so far>
+  :num-tests-total <total number of tests to be run>
+  :seed            42
+  :pass?           true
+  :property        #<...>
+  :result          true
+  :result-data     {...}}
 
-      ;; called after the first failing trial
-      {:type         :failure
-       :fail         [...failing args...]
-       :failing-size 13
-       :num-tests    <tests ran before failure found>
-       :pass?        false
-       :property     #<...>
-       :result       false/exception
-       :result-data  {...}
-       :seed         42}
+  ;; called after the first failing trial
+  {:type         :failure
+  :fail         [...failing args...]
+  :failing-size 13
+  :num-tests    <tests ran before failure found>
+  :pass?        false
+  :property     #<...>
+  :result       false/exception
+  :result-data  {...}
+  :seed         42}
 
-    It will also be called on :complete, :shrink-step and :shrunk. Many
-    of the keys also appear in the quick-check return value, and are
-    documented below.
+  It will also be called on :complete, :shrink-step and :shrunk. Many
+  of the keys also appear in the quick-check return value, and are
+  documented below.
 
   If the test passes, the return value will be something like:
 
-      {:num-tests       100,
-       :pass?           true,
-       :result          true,
-       :seed            1561826505982,
-       :time-elapsed-ms 24}
+  {:num-tests       100,
+  :pass?           true,
+  :result          true,
+  :seed            1561826505982,
+  :time-elapsed-ms 24}
 
   If the test fails, the return value will be something like:
 
-      {:fail            [0],
-       :failed-after-ms 0,
-       :failing-size    0,
-       :num-tests       1,
-       :pass?           false,
-       :result          false,
-       :result-data     nil,
-       :seed            1561826506080,
-       :shrunk
-       {:depth               0,
-        :pass?               false,
-        :result              false,
-        :result-data         nil,
-        :smallest            [0],
-        :time-shrinking-ms   0,
-        :total-nodes-visited 0}}
+  {:fail            [0],
+  :failed-after-ms 0,
+  :failing-size    0,
+  :num-tests       1,
+  :pass?           false,
+  :result          false,
+  :result-data     nil,
+  :seed            1561826506080,
+  :shrunk
+  {:depth               0,
+  :pass?               false,
+  :result              false,
+  :result-data         nil,
+  :smallest            [0],
+  :time-shrinking-ms   0,
+  :total-nodes-visited 0}}
 
   The meaning of the individual entries is:
 
-      :num-tests
-      The total number of trials that was were run, not including
-      shrinking (if applicable)
+  :num-tests
+  The total number of trials that was were run, not including
+  shrinking (if applicable)
 
-      :pass?
-      A boolean indicating whether the test passed or failed
+  :pass?
+  A boolean indicating whether the test passed or failed
 
-      :result
-      A legacy entry that is similar to :pass?
+  :result
+  A legacy entry that is similar to :pass?
 
-      :seed
-      The seed used for the entire test run; can be used to reproduce
-      a test run by passing it as the :seed option to quick-check
+  :seed
+  The seed used for the entire test run; can be used to reproduce
+  a test run by passing it as the :seed option to quick-check
 
-      :time-elapsed-ms
-      The total time, in milliseconds, of a successful test run
+  :time-elapsed-ms
+  The total time, in milliseconds, of a successful test run
 
-      :fail
-      The generated values for the first failure; note that this is
-      always a vector, since prop/for-all can have multiple clauses
+  :fail
+  The generated values for the first failure; note that this is
+  always a vector, since prop/for-all can have multiple clauses
 
-      :failed-after-ms
-      The total time, in milliseconds, spent finding the first failing
-      trial
+  :failed-after-ms
+  The total time, in milliseconds, spent finding the first failing
+  trial
 
-      :failing-size
-      The value of the size parameter used to generate the first
-      failure
+  :failing-size
+  The value of the size parameter used to generate the first
+  failure
 
-      :result-data
-      The result data, if any, of the first failing trial (to take
-      advantage of this a property must return an object satisfying
-      the clojure.test.check.results/Result protocol)
+  :result-data
+  The result data, if any, of the first failing trial (to take
+  advantage of this a property must return an object satisfying
+  the clojure.test.check.results/Result protocol)
 
-      :shrunk
-      A map of data about the shrinking process; nested keys that
-      appear at the top level have the same meaning; other keys are
-      documented next
+  :shrunk
+  A map of data about the shrinking process; nested keys that
+  appear at the top level have the same meaning; other keys are
+  documented next
 
-      :shrunk / :depth
-      The depth in the shrink tree that the smallest failing instance
-      was found; this is essentially the idea of how many times the
-      original failure was successfully shrunk
+  :shrunk / :depth
+  The depth in the shrink tree that the smallest failing instance
+  was found; this is essentially the idea of how many times the
+  original failure was successfully shrunk
 
-      :smallest
-      The smallest values found in the shrinking process that still
-      fail the test; this is a vector of the same type as :fail
+  :smallest
+  The smallest values found in the shrinking process that still
+  fail the test; this is a vector of the same type as :fail
 
-      :time-shrinking-ms
-      The total time, in milliseconds, spent shrinking
+  :time-shrinking-ms
+  The total time, in milliseconds, spent shrinking
 
-      :total-nodes-visited
-      The total number of steps in the shrinking process
+  :total-nodes-visited
+  The total number of steps in the shrinking process
 
   Examples:
 
-      (def p (for-all [a gen/nat] (> (* a a) a)))
+  (def p (for-all [a gen/nat] (> (* a a) a)))
 
-      (quick-check 100 p)
-      (quick-check 200 p
-                   :seed 42
-                   :max-size 50
-                   :reporter-fn (fn [m]
-                                  (when (= :failure (:type m))
-                                    (println \"Uh oh...\"))))"
-  [num-tests property & {:keys [seed max-size reporter-fn]
-                         :or {max-size 200, reporter-fn (constantly nil)}}]
-  (let [[created-seed rng] (make-rng seed)
-        size-seq (gen/make-size-range-seq max-size)
-        start-time (get-current-time-millis)]
-    (loop [so-far 0
-           size-seq size-seq
-           rstate rng]
-      (if (== so-far num-tests)
-        (complete property num-tests created-seed start-time reporter-fn)
-        (let [[size & rest-size-seq] size-seq
-              [r1 r2] (random/split rstate)
-              result-map-rose (gen/call-gen property r1 size)
-              result-map (rose/root result-map-rose)
-              result (:result result-map)
-              args (:args result-map)
-              so-far (inc so-far)]
-          (if (results/pass? result)
-            (do
-              (reporter-fn {:type            :trial
-                            :args            args
-                            :num-tests       so-far
-                            :num-tests-total num-tests
-                            :pass?           true
-                            :property        property
-                            :result          result
-                            :result-data     (results/result-data result)
-                            :seed            seed})
-              (recur so-far rest-size-seq r2))
-            (failure property result-map-rose so-far size
-                     created-seed start-time reporter-fn)))))))
+  (quick-check 100 p)
+  (quick-check 200 p
+  :seed 42
+  :max-size 50
+  :reporter-fn (fn [m]
+  (when (= :failure (:type m))
+  (println \"Uh oh...\"))))"
+[num-tests property & {:keys [seed max-size reporter-fn]
+                       :or {max-size 200, reporter-fn (constantly nil)}}]
+(let [[created-seed rng] (make-rng seed)
+      size-seq (gen/make-size-range-seq max-size)
+      start-time (get-current-time-millis)]
+  (loop [so-far 0
+         size-seq size-seq
+         rstate rng]
+    (if (== so-far num-tests)
+      (complete property num-tests created-seed start-time reporter-fn)
+      (let [[size & rest-size-seq] size-seq
+            [r1 r2] (random/split rstate)
+            so-far (inc so-far)
+            result-map-rose (try (gen/call-gen property r1 size)
+                                 (catch #?(:clj Throwable :cljs :default) e
+                                   (exception-thrown property e so-far size created-seed
+                                                     start-time reporter-fn)))]
+          (if (rose/rose-tree? result-map-rose)
+            (let [result-map (rose/root result-map-rose)
+                  result (:result result-map)
+                  args (:args result-map)]
+              (if (results/pass? result)
+                (do
+                  (reporter-fn {:type            :trial
+                                :args            args
+                                :num-tests       so-far
+                                :num-tests-total num-tests
+                                :pass?           true
+                                :property        property
+                                :result          result
+                                :result-data     (results/result-data result)
+                                :seed            seed})
+                  (recur so-far rest-size-seq r2))
+                (failure property result-map-rose so-far size
+                         created-seed start-time reporter-fn)))
+            result-map-rose))))))
 
 (defn- smallest-shrink
   [total-nodes-visited depth smallest start-time]

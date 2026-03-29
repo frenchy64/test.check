@@ -26,6 +26,12 @@
           (= i 1) children
           :else not-found)))
 
+(defn rose-tree?
+  "Test if `x` is Rose tree."
+  {:no-doc true}
+  [x]
+  (instance? RoseTree x))
+
 (defn root
   "Returns the root of a Rose tree."
   {:no-doc true}

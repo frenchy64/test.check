@@ -67,7 +67,7 @@
     (is (= num-tests ct/*default-test-count*))))
 
 (deftest tcheck-116-debug-prn-should-be-optional
-  (testing "bind ct/*report-completion* to false to supress completion report"
+  (testing "bind ct/*report-completion* to false to suppress completion report"
     (binding [ct/*report-completion* false]
       (let [{:keys [out]} (capture-test-var #'default-trial-counts)]
         (is (= out "")))))
@@ -166,10 +166,11 @@
 (defspec this-is-supposed-to-fail 100 vector-elements-are-unique)
 
 (deftest can-report-failures
-  (let [{:keys [test-out]} (capture-test-var #'this-is-supposed-to-fail)
+  (let [{:keys [report-counters test-out]} (capture-test-var #'this-is-supposed-to-fail)
         [result-line expected-line actual-line & more] (->> (str/split-lines test-out)
                                                             ;; skip any ::shrunk messages
                                                             (drop-while #(not (re-find #"^FAIL" %))))]
+    (is (= report-counters {:test 1, :pass 0, :fail 1, :error 0}))
     (is (re-find #"^FAIL in \(this-is-supposed-to-fail\) " result-line))
     #?(:clj (is (re-find #"\(clojure_test_test\.cljc:\d+\)$" result-line)))
     (is (= expected-line "expected: {:result true}"))
@@ -182,13 +183,13 @@
 (deftest can-report-shrinking
   (testing "don't emit Shrinking messages by default"
     (let [{:keys [report-counters test-out]} (capture-test-var #'this-is-supposed-to-fail)]
-      (is (== 1 (:fail report-counters)))
+      (is (= report-counters {:test 1, :pass 0, :fail 1, :error 0}))
       (is (not (re-find #"Shrinking" test-out)))))
 
   (testing "bind *report-shrinking* to true to emit Shrinking messages"
     (binding [ct/*report-shrinking* true]
       (let [{:keys [report-counters test-out]} (capture-test-var #'this-is-supposed-to-fail)]
-        (is (== 1 (:fail report-counters)))
+        (is (= report-counters {:test 1, :pass 0, :fail 1, :error 0}))
         (is (re-seq #"Shrinking this-is-supposed-to-fail starting with parameters \[\[[\s\S]+"
                     test-out))))))
 
@@ -208,7 +209,7 @@
       (is (and a b (= a b))))))
 
 (deftest can-report-shrunk
-  (testing "supress shrunk report when ct/*report-completion* is bound to false"
+  (testing "suppress shrunk report when ct/*report-completion* is bound to false"
     (binding [ct/*report-completion* false]
       (let [{:keys [test-out]} (capture-test-var #'this-is-supposed-to-fail)]
         (is (not (re-find #":type :clojure.test.check.clojure-test/shrunk" test-out))))))
@@ -218,6 +219,7 @@
       (is (re-find #":type :clojure.test.check.clojure-test/shrunk" test-out)))))
 
 (defspec this-throws-an-exception
+  {:seed 123456}
   (prop/for-all [x gen/nat]
     (throw (ex-info "this property is terrible" {}))))
 
@@ -227,8 +229,12 @@
     (is (re-find #"ERROR in \(this-throws-an-exception\)" test-out))
     ;; TCHECK-151
     (is (= 1 (count (re-seq #"this property is terrible" test-out)))
-        "Only prints exceptions twice")))
-
+        "Only prints exceptions once")
+    ;; TCHECK-159
+    (is (= 1 (count (re-seq #"Error during iteration 1"
+                            test-out))))
+    (is (= 1 (count (re-seq #"Seed: 123456"
+                            test-out))))))
 
 (defn test-ns-hook
   "Run only tests defined by deftest, ignoring those defined by defspec."
